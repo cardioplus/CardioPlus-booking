@@ -41,6 +41,196 @@
         button:hover { background-color: #6b5b4c; }
         button:disabled { background-color: #cccccc; cursor: not-allowed; }
         #status { text-align: center; font-size: 12px; color: #888; margin-bottom: 15px; }
+
+        /* ส่วนเพิ่มเติมสำหรับหน้า Success */
+        #successView { display: none; text-align: center; }
+        .success-icon { font-size: 50px; color: #4CAF50; margin-bottom: 10px; }
+        .success-title { color: #4CAF50; margin-top: 0; margin-bottom: 5px;}
+        .details-box {
+            background: #faf9f7; padding: 15px; border-radius: 8px; 
+            margin-top: 15px; text-align: left; border: 1px solid #e0dcd3;
+        }
+        .details-box p { margin: 8px 0; font-size: 14px; }
+        .close-btn { background-color: #4CAF50; }
+        .close-btn:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 id="mainTitle">จองคิวตรวจ</h2>
+        <div id="status">กำลังเชื่อมต่อระบบ...</div>
+
+        <form id="bookingForm" style="display: none;">
+            <input type="hidden" id="lineUserId">
+
+            <label>ชื่อ-นามสกุล</label>
+            <input type="text" id="patientName" required placeholder="กรุณากรอกชื่อ-นามสกุล">
+
+            <label>เบอร์โทรศัพท์ติดต่อ</label>
+            <input type="tel" id="phoneNumber" required pattern="[0-9]{10}" placeholder="08xxxxxxxx" maxlength="10">
+            
+            <label>เลือกบริการ</label>
+            <select id="service" required>
+                <option value="">-- กรุณาเลือก --</option>
+                <option value="ตรวจโรคหัวใจ">ปรึกษาและตรวจเช็คโรคหัวใจ</option>
+                <option value="ตรวจคลื่นไฟฟ้าหัวใจ (ECG)">ตรวจคลื่นไฟฟ้าหัวใจ (ECG)</option>
+                <option value="ตรวจอัลตราซาวด์หัวใจ (Echo)">ตรวจอัลตราซาวด์หัวใจ (Echo)</option>
+                <option value="ประเมินก่อนผ่าตัด">ประเมินก่อนผ่าตัด</option>
+                <option value="ตรวจโรคทั่วไป เบาหวาน ความดัน ไขมัน">ตรวจโรคทั่วไป เบาหวาน ความดัน ไขมัน</option>
+                <option value="วัคซีนผู้ใหญ่">วัคซีนผู้ใหญ่</option>
+                <option value="ปรึกษาควบคุมน้ำหนัก">ปรึกษาควบคุมน้ำหนัก</option>
+                <option value="บริการพบแพทย์ออนไลน์ (สำหรับผู้ป่วยเก่าเท่านั้น)">บริการพบแพทย์ออนไลน์</option>
+            </select>
+
+            <label>วันที่ต้องการนัดหมาย</label>
+            <input type="date" id="bookDate" required>
+            
+            <label>เวลาที่สะดวก</label>
+            <select id="bookTime" required disabled>
+                <option value="">-- กรุณาเลือกวันที่ก่อน --</option>
+            </select>
+            
+            <button type="submit" id="submitBtn">ยืนยันการจอง</button>
+        </form>
+
+        <div id="successView">
+            <div class="success-icon">✔️</div>
+            <h2 class="success-title">จองคิวสำเร็จ</h2>
+            <p style="font-size: 14px; margin-top: 0;">ข้อมูลการนัดหมายของคุณถูกบันทึกเรียบร้อยแล้ว</p>
+            
+            <div class="details-box">
+                <p><strong>ชื่อผู้จอง:</strong> <span id="succName"></span></p>
+                <p><strong>บริการ:</strong> <span id="succService"></span></p>
+                <p><strong>วันที่:</strong> <span id="succDate"></span></p>
+                <p><strong>เวลา:</strong> <span id="succTime"></span></p>
+            </div>
+
+            <button class="close-btn" onclick="liff.closeWindow()">ปิดหน้าต่าง</button>
+        </div>
+
+    </div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOECJizIo7TtDn832EVBgDF4pnrAsq2v8",
+            authDomain: "cardioplus-booking.firebaseapp.com",
+            projectId: "cardioplus-booking",
+            storageBucket: "cardioplus-booking.firebasestorage.app",
+            messagingSenderId: "140447979267",
+            appId: "1:140447979267:web:cdd8feebd1d372f43abb36"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const myLiffId = "2009872099-vtv2PBor";
+
+        const dateInput = document.getElementById("bookDate");
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+
+        async function main() {
+            try {
+                await liff.init({ liffId: myLiffId });
+                if (liff.isLoggedIn()) {
+                    const profile = await liff.getProfile();
+                    document.getElementById("lineUserId").value = profile.userId;
+                    document.getElementById("patientName").value = profile.displayName;
+                    
+                    document.getElementById("status").style.display = "none";
+                    document.getElementById("bookingForm").style.display = "block";
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ LINE";
+                console.error(err);
+            }
+        }
+
+        const maxQueue = 3; 
+        const timeSelect = document.getElementById("bookTime");
+        
+        const timeSlots = {
+            "17:00": "17:00 - 17:30",
+            "17:30": "17:30 - 18:00",
+            "18:00": "18:00 - 18:30",
+            "18:30": "18:30 - 19:00",
+            "19:00": "19:00 - 19:30"
+        };
+
+        dateInput.addEventListener("change", async (e) => {
+            const selectedDate = e.target.value;
+            if(!selectedDate) return;
+
+            timeSelect.innerHTML = `<option value="">-- กำลังเช็คคิวว่าง... --</option>`;
+            timeSelect.disabled = true;
+
+            try {
+                const q = query(collection(db, "appointments"), where("bookDate", "==", selectedDate));
+                const snapshot = await getDocs(q);
+
+                let counts = { "17:00": 0, "17:30": 0, "18:00": 0, "18:30": 0, "19:00": 0 };
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.status !== "ยกเลิก" && counts[data.bookTime] !== undefined) {
+                        counts[data.bookTime]++;
+                    }
+                });
+
+                timeSelect.innerHTML = `<option value="">-- กรุณาเลือกเวลา --</option>`;
+                
+                Object.keys(timeSlots).forEach(timeKey => {
+                    let bookedCount = counts[timeKey];
+                    let remain = maxQueue - bookedCount;
+                    let optionHTML = document.createElement("option");
+                    optionHTML.value = timeKey;
+
+                    if (remain <= 0) {
+                        optionHTML.disabled = true;
+                        optionHTML.text = `${timeSlots[timeKey]} (เต็ม)`;
+                    } else {
+                        optionHTML.text = `${timeSlots[timeKey]} (เหลือ ${remain} คิว)`;
+                    }
+                    timeSelect.appendChild(optionHTML);
+                });
+
+                timeSelect.disabled = false;
+
+            } catch (error) {
+                console.error("Error checking queue: ", error);
+                timeSelect.innerHTML = `<option value="">เกิดข้อผิดพลาด ลองเลือกวันที่ใหม่อีกครั้ง</option>`;
+            }
+        });
+
+        document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById("submitBtn");
+            submitBtn.innerText = "กำลังตรวจสอบคิว...";
+            submitBtn.disabled = true;
+
+            const patientName = document.getElementById("patientName").value;
+            const serviceSelect = document.getElementById("service");
+            const serviceName = serviceSelect.options[serviceSelect.selectedIndex].text;
+            const selectedDate = document.getElementById("bookDate").value;
+            const selectedTime = document.getElementById("bookTime").value;
+
+            try {
+                // 1. ตรวจสอบคิวซ้ำ
+                const
+            border-radius: 6px; font-size: 16px; font-family: 'Prompt', sans-serif;
+            cursor: pointer; transition: background-color 0.3s;
+        }
+        button:hover { background-color: #6b5b4c; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #status { text-align: center; font-size: 12px; color: #888; margin-bottom: 15px; }
     </style>
 </head>
 <body>
