@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>นัดหมาย - CardioPlus Clinic</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // 1. นำ Firebase Config จาก Step 1 มาวางทับตรงนี้ทั้งหมด
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOECJizIo7TtDn832EVBgDF4pnrAsq2v8",
+            authDomain: "cardioplus-booking.firebaseapp.com",
+            projectId: "cardioplus-booking",
+            storageBucket: "cardioplus-booking.firebasestorage.app",
+            messagingSenderId: "140447979267",
+            appId: "1:140447979267:web:cdd8feebd1d372f43abb36"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 2. นำ LIFF ID จาก Step 2 มาใส่ตรงนี้
+        const myLiffId = "2009872099-vtv2PBor"; 
+
+        async function main() {
+            await liff.init({ liffId: myLiffId });
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                document.getElementById("patientName").value = profile.displayName;
+                document.getElementById("userId").value = profile.userId;
+            } else {
+                liff.login();
+            }
+        }
+        main();
+
+        // เมื่อกดปุ่ม "ยืนยันการจอง"
+        document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById("submitBtn");
+            btn.disabled = true;
+            btn.innerText = "กำลังบันทึกข้อมูล...";
+
+            try {
+                // บันทึกข้อมูลลง Firestore ใน Collection ชื่อ 'appointments'
+                await addDoc(collection(db, "appointments"), {
+                    userId: document.getElementById("userId").value,
+                    patientName: document.getElementById("patientName").value,
+                    date: document.getElementById("bookDate").value,
+                    time: document.getElementById("bookTime").value,
+                    service: document.getElementById("service").value,
+                    status: "รอยืนยัน",
+                    timestamp: new Date()
+                });
+                
+                alert("ระบบได้รับข้อมูลการจองเรียบร้อยแล้ว");
+                liff.closeWindow(); // ปิดหน้าต่าง LIFF อัตโนมัติ
+            } catch (error) {
+                console.error("Error: ", error);
+                alert("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
+                btn.disabled = false;
+                btn.innerText = "ยืนยันการจอง";
+            }
+        });
+    </script>
+
+    <style>
+        /* ตกแต่งหน้าตาแบบ Minimalist / Muji Style */
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #FAF9F6; /* สีขาว Natural Cotton */
+            color: #4A4A4A;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            background-color: #FFFFFF;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        h2 {
+            text-align: center;
+            color: #8B7D7B; /* สี Cream Ash / ไม้สีอ่อน */
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            border: 1px solid #E0E0E0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: #FCFCFC;
+            font-size: 16px;
+        }
+        input:read-only {
+            background-color: #F0F0F0;
+            color: #888;
+        }
+        button {
+            margin-top: 25px;
+            width: 100%;
+            background-color: #8B7D7B; 
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:disabled {
+            background-color: #CCCCCC;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>จองคิว CardioPlus Clinic</h2>
+        <form id="bookingForm">
+            <input type="hidden" id="userId">
+            
+            <label>ชื่อผู้ติดต่อ (จาก LINE)</label>
+            <input type="text" id="patientName" readonly>
+            
+            <label>เลือกบริการ</label>
+            <select id="service" required>
+                <option value="">-- กรุณาเลือก --</option>
+                <option value="ตรวจโรคทั่วไป">ตรวจโรคทั่วไป</option>
+                <option value="ปรึกษาโรคหัวใจ">ปรึกษาและตรวจเช็คโรคหัวใจ</option>
+                <option value="ตรวจคลื่นไฟฟ้าหัวใจ (ECG)">ตรวจคลื่นไฟฟ้าหัวใจ (ECG)</option>
+                <option value="เวชศาสตร์ชะลอวัย">ให้คำปรึกษาเวชศาสตร์ชะลอวัย</option>
+            </select>
+
+            <label>วันที่ต้องการนัดหมาย</label>
+            <input type="date" id="bookDate" required>
+            
+            <label>เวลาที่สะดวก</label>
+            <select id="bookTime" required>
+                <option value="">-- กรุณาเลือกเวลา --</option>
+                <option value="17:00">17:00 - 18:00</option>
+                <option value="18:00">18:00 - 19:00</option>
+                <option value="19:00">19:00 - 20:00</option>
+            </select>
+            
+            <button type="submit" id="submitBtn">ยืนยันการจอง</button>
+        </form>
+    </div>
+</body>
+</html>
