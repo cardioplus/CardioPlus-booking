@@ -27,7 +27,7 @@
         const myLiffId = "2009872099-vtv2PBor"; 
 
         async function main() {
-            await liff.init({ liffId: myLiffId });
+            await liff.init({ liffId: 2009872099-vtv2PBor });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 document.getElementById("patientName").value = profile.displayName;
