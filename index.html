@@ -8,7 +8,7 @@
     <style>
         body {
             font-family: 'Prompt', sans-serif;
-            background-color: #f9f8f6; /* โทนสีครีมสว่าง */
+            background-color: #f9f8f6; 
             color: #4a4a4a;
             margin: 0;
             padding: 20px;
@@ -23,54 +23,24 @@
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-        h2 {
-            text-align: center;
-            color: #6b5b4c; /* โทนสีไม้/น้ำตาลอ่อน */
-            margin-top: 0;
-        }
-        label {
-            display: block;
-            margin-top: 15px;
-            margin-bottom: 5px;
-            font-size: 14px;
-            font-weight: 500;
-        }
+        h2 { text-align: center; color: #6b5b4c; margin-top: 0; }
+        label { display: block; margin-top: 15px; margin-bottom: 5px; font-size: 14px; font-weight: 500; }
         input, select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #e0dcd3;
-            border-radius: 6px;
-            font-family: 'Prompt', sans-serif;
-            font-size: 14px;
-            box-sizing: border-box;
-            background-color: #faf9f7;
+            width: 100%; padding: 10px; border: 1px solid #e0dcd3;
+            border-radius: 6px; font-family: 'Prompt', sans-serif; font-size: 14px;
+            box-sizing: border-box; background-color: #faf9f7;
         }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #8c7a6b;
-        }
+        input:focus, select:focus { outline: none; border-color: #8c7a6b; }
+        select:disabled { background-color: #eeeeee; color: #888; cursor: not-allowed; }
         button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 25px;
-            background-color: #8c7a6b;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-family: 'Prompt', sans-serif;
-            cursor: pointer;
-            transition: background-color 0.3s;
+            width: 100%; padding: 12px; margin-top: 25px;
+            background-color: #8c7a6b; color: white; border: none;
+            border-radius: 6px; font-size: 16px; font-family: 'Prompt', sans-serif;
+            cursor: pointer; transition: background-color 0.3s;
         }
-        button:hover {
-            background-color: #6b5b4c;
-        }
-        #status {
-            text-align: center;
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 15px;
-        }
+        button:hover { background-color: #6b5b4c; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #status { text-align: center; font-size: 12px; color: #888; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -105,13 +75,8 @@
             <input type="date" id="bookDate" required>
             
             <label>เวลาที่สะดวก</label>
-            <select id="bookTime" required>
-                <option value="">-- กรุณาเลือกเวลา --</option>
-                <option value="17:00">17:00 - 17:30</option>
-                <option value="17:30">17:30 - 18:00</option>
-                <option value="18:00">18:00 - 18:30</option>
-                <option value="18:30">18:30 - 19:00</option>
-                <option value="19:00">19:00 - 19:30</option>
+            <select id="bookTime" required disabled>
+                <option value="">-- กรุณาเลือกวันที่ก่อน --</option>
             </select>
             
             <button type="submit" id="submitBtn">ยืนยันการจอง</button>
@@ -122,9 +87,8 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // 1. ใส่ Firebase Config ของคุณหมอตรงนี้ (ลบของเก่าในปีกกาออก แล้ววางของจริงลงไป)
         const firebaseConfig = {
             apiKey: "AIzaSyDOECJizIo7TtDn832EVBgDF4pnrAsq2v8",
             authDomain: "cardioplus-booking.firebaseapp.com",
@@ -136,23 +100,20 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
-        // 2. ใส่ LIFF ID ตรงนี้
         const myLiffId = "2009872099-vtv2PBor";
 
-        // ฟังก์ชันเริ่มต้นทำงานเมื่อโหลดหน้าเว็บ
+        const dateInput = document.getElementById("bookDate");
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+
         async function main() {
             try {
                 await liff.init({ liffId: myLiffId });
                 if (liff.isLoggedIn()) {
-                    // ดึงข้อมูลโปรไฟล์ LINE
                     const profile = await liff.getProfile();
+                    document.getElementById("lineUserId").value = profile.userId;
+                    document.getElementById("patientName").value = profile.displayName;
                     
-                    // นำข้อมูลไปใส่ในฟอร์ม
-                    document.getElementById("lineUserId").value = profile.userId; // ซ่อน ID ไว้ส่งเข้าฐานข้อมูล
-                    document.getElementById("patientName").value = profile.displayName; // แสดงชื่อ LINE แต่พิมพ์แก้ได้
-                    
-                    // แสดงฟอร์มให้คนไข้เห็น
                     document.getElementById("status").style.display = "none";
                     document.getElementById("bookingForm").style.display = "block";
                 } else {
@@ -164,28 +125,119 @@
             }
         }
 
-        // จัดการเมื่อคนไข้กดปุ่ม "ยืนยันการจอง"
-        document.getElementById("bookingForm").addEventListener("submit", async (e) => {
-            e.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรช
-            
-            const submitBtn = document.getElementById("submitBtn");
-            submitBtn.innerText = "กำลังบันทึกข้อมูล...";
-            submitBtn.disabled = true;
+        const maxQueue = 3; 
+        const timeSelect = document.getElementById("bookTime");
+        
+        const timeSlots = {
+            "17:00": "17:00 - 17:30",
+            "17:30": "17:30 - 18:00",
+            "18:00": "18:00 - 18:30",
+            "18:30": "18:30 - 19:00",
+            "19:00": "19:00 - 19:30"
+        };
+
+        dateInput.addEventListener("change", async (e) => {
+            const selectedDate = e.target.value;
+            if(!selectedDate) return;
+
+            timeSelect.innerHTML = `<option value="">-- กำลังเช็คคิวว่าง... --</option>`;
+            timeSelect.disabled = true;
 
             try {
-                // ส่งข้อมูลขึ้น Firebase Collection ชื่อ 'appointments'
+                const q = query(collection(db, "appointments"), where("bookDate", "==", selectedDate));
+                const snapshot = await getDocs(q);
+
+                let counts = { "17:00": 0, "17:30": 0, "18:00": 0, "18:30": 0, "19:00": 0 };
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.status !== "ยกเลิก" && counts[data.bookTime] !== undefined) {
+                        counts[data.bookTime]++;
+                    }
+                });
+
+                timeSelect.innerHTML = `<option value="">-- กรุณาเลือกเวลา --</option>`;
+                
+                Object.keys(timeSlots).forEach(timeKey => {
+                    let bookedCount = counts[timeKey];
+                    let remain = maxQueue - bookedCount;
+                    let optionHTML = document.createElement("option");
+                    optionHTML.value = timeKey;
+
+                    if (remain <= 0) {
+                        optionHTML.disabled = true;
+                        optionHTML.text = `${timeSlots[timeKey]} (เต็ม)`;
+                    } else {
+                        optionHTML.text = `${timeSlots[timeKey]} (เหลือ ${remain} คิว)`;
+                    }
+                    timeSelect.appendChild(optionHTML);
+                });
+
+                timeSelect.disabled = false;
+
+            } catch (error) {
+                console.error("Error checking queue: ", error);
+                timeSelect.innerHTML = `<option value="">เกิดข้อผิดพลาด ลองเลือกวันที่ใหม่อีกครั้ง</option>`;
+            }
+        });
+
+        document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById("submitBtn");
+            submitBtn.innerText = "กำลังตรวจสอบคิว...";
+            submitBtn.disabled = true;
+
+            const selectedDate = document.getElementById("bookDate").value;
+            const selectedTime = document.getElementById("bookTime").value;
+
+            try {
+                // ------------------------------------------------------------------
+                // ขั้นตอนที่ 1: ตรวจสอบอีกครั้งก่อนบันทึกว่าคิวเต็มแล้วหรือยัง (ดักคนจองซ้อนกัน)
+                // ------------------------------------------------------------------
+                const checkQ = query(collection(db, "appointments"), 
+                    where("bookDate", "==", selectedDate),
+                    where("bookTime", "==", selectedTime)
+                );
+                const checkSnapshot = await getDocs(checkQ);
+                
+                let currentCount = 0;
+                checkSnapshot.forEach((doc) => {
+                    if (doc.data().status !== "ยกเลิก") {
+                        currentCount++;
+                    }
+                });
+
+                // ถ้าคิวเต็ม 3 คนแล้ว ให้ Pop-up เตือนและหยุดการบันทึก
+                if (currentCount >= maxQueue) {
+                    alert(`ขออภัยค่ะ คิวในช่วงเวลา ${timeSlots[selectedTime]} มีผู้จองเต็ม ${maxQueue} คิวแล้ว กรุณาเลือกช่วงเวลาอื่นค่ะ`);
+                    
+                    submitBtn.innerText = "ยืนยันการจอง";
+                    submitBtn.disabled = false;
+                    
+                    // สั่งให้รีเฟรชช่องเวลาใหม่ เพื่ออัปเดตว่าคิวเต็มแล้ว
+                    dateInput.dispatchEvent(new Event("change"));
+                    return; 
+                }
+
+                // ------------------------------------------------------------------
+                // ขั้นตอนที่ 2: ถ้าคิวยังว่าง ให้บันทึกพร้อมสถานะ "ยืนยันแล้ว" ทันที
+                // ------------------------------------------------------------------
+                submitBtn.innerText = "กำลังบันทึกข้อมูล...";
+
                 await addDoc(collection(db, "appointments"), {
                     userId: document.getElementById("lineUserId").value,
                     patientName: document.getElementById("patientName").value,
                     phoneNumber: document.getElementById("phoneNumber").value,
                     service: document.getElementById("service").value,
-                    bookDate: document.getElementById("bookDate").value,
-                    bookTime: document.getElementById("bookTime").value,
-                    createdAt: serverTimestamp() // บันทึกเวลาที่กดจอง
+                    bookDate: selectedDate,
+                    bookTime: selectedTime,
+                    status: "ยืนยันแล้ว", // ข้ามสถานะรอยืนยันไปได้เลย
+                    createdAt: serverTimestamp() 
                 });
 
-                alert("บันทึกการจองสำเร็จ! คลินิกจะติดต่อกลับเพื่อยืนยันอีกครั้ง");
-                liff.closeWindow(); // ปิดหน้าต่าง LIFF อัตโนมัติหลังจองเสร็จ
+                alert("นัดหมายสำเร็จ! ข้อมูลของคุณถูกบันทึกเข้าระบบเรียบร้อยแล้ว");
+                liff.closeWindow(); 
 
             } catch (error) {
                 console.error("Error adding document: ", error);
