@@ -3,153 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>นัดหมาย - CardioPlus Clinic</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-        // 1. นำ Firebase Config จาก Step 1 มาวางทับตรงนี้ทั้งหมด
-        const firebaseConfig = {
-            apiKey: "AIzaSyDOECJizIo7TtDn832EVBgDF4pnrAsq2v8",
-            authDomain: "cardioplus-booking.firebaseapp.com",
-            projectId: "cardioplus-booking",
-            storageBucket: "cardioplus-booking.firebasestorage.app",
-            messagingSenderId: "140447979267",
-            appId: "1:140447979267:web:cdd8feebd1d372f43abb36"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // 2. นำ LIFF ID จาก Step 2 มาใส่ตรงนี้
-        const myLiffId = "2009872099-vtv2PBor"; 
-
-        async function main() {
-            await liff.init({ liffId: 2009872099-vtv2PBor });
-            if (liff.isLoggedIn()) {
-                const profile = await liff.getProfile();
-                document.getElementById("patientName").value = profile.displayName;
-                document.getElementById("userId").value = profile.userId;
-            } else {
-                liff.login();
-            }
-        }
-        main();
-
-        // เมื่อกดปุ่ม "ยืนยันการจอง"
-        document.getElementById("bookingForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById("submitBtn");
-            btn.disabled = true;
-            btn.innerText = "กำลังบันทึกข้อมูล...";
-
-            try {
-                // บันทึกข้อมูลลง Firestore ใน Collection ชื่อ 'appointments'
-                await addDoc(collection(db, "appointments"), {
-                    userId: document.getElementById("userId").value,
-                    patientName: document.getElementById("patientName").value,
-                    date: document.getElementById("bookDate").value,
-                    time: document.getElementById("bookTime").value,
-                    service: document.getElementById("service").value,
-                    status: "รอยืนยัน",
-                    timestamp: new Date()
-                });
-                
-                alert("ระบบได้รับข้อมูลการจองเรียบร้อยแล้ว");
-                liff.closeWindow(); // ปิดหน้าต่าง LIFF อัตโนมัติ
-            } catch (error) {
-                console.error("Error: ", error);
-                alert("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
-                btn.disabled = false;
-                btn.innerText = "ยืนยันการจอง";
-            }
-        });
-    </script>
-
+    <title>จองคิวนัดหมาย - CardioPlus Clinic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        /* ตกแต่งหน้าตาแบบ Minimalist / Muji Style */
         body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #FAF9F6; /* สีขาว Natural Cotton */
-            color: #4A4A4A;
-            padding: 20px;
+            font-family: 'Prompt', sans-serif;
+            background-color: #f9f8f6; /* โทนสีครีมสว่าง */
+            color: #4a4a4a;
             margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
         }
         .container {
-            background-color: #FFFFFF;
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 400px;
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-            max-width: 400px;
-            margin: 0 auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
         h2 {
             text-align: center;
-            color: #8B7D7B; /* สี Cream Ash / ไม้สีอ่อน */
-            margin-bottom: 20px;
-            font-size: 22px;
+            color: #6b5b4c; /* โทนสีไม้/น้ำตาลอ่อน */
+            margin-top: 0;
         }
         label {
             display: block;
             margin-top: 15px;
-            font-weight: bold;
+            margin-bottom: 5px;
             font-size: 14px;
+            font-weight: 500;
         }
         input, select {
             width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            border: 1px solid #E0E0E0;
-            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #e0dcd3;
+            border-radius: 6px;
+            font-family: 'Prompt', sans-serif;
+            font-size: 14px;
             box-sizing: border-box;
-            background-color: #FCFCFC;
-            font-size: 16px;
+            background-color: #faf9f7;
         }
-        input:read-only {
-            background-color: #F0F0F0;
-            color: #888;
+        input:focus, select:focus {
+            outline: none;
+            border-color: #8c7a6b;
         }
         button {
-            margin-top: 25px;
             width: 100%;
-            background-color: #8B7D7B; 
+            padding: 12px;
+            margin-top: 25px;
+            background-color: #8c7a6b;
             color: white;
             border: none;
-            padding: 14px;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 16px;
-            font-weight: bold;
+            font-family: 'Prompt', sans-serif;
             cursor: pointer;
-            transition: 0.3s;
+            transition: background-color 0.3s;
         }
-        button:disabled {
-            background-color: #CCCCCC;
+        button:hover {
+            background-color: #6b5b4c;
+        }
+        #status {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h2>จองคิว CardioPlus Clinic</h2>
-        <form id="bookingForm">
-            <input type="hidden" id="userId">
-            
-            <label>ชื่อผู้ติดต่อ (จาก LINE)</label>
-            <input type="text" id="patientName" readonly>
+        <h2>จองคิวตรวจ</h2>
+        <div id="status">กำลังเชื่อมต่อระบบ...</div>
+
+        <form id="bookingForm" style="display: none;">
+            <input type="hidden" id="lineUserId">
+
+            <label>ชื่อ-นามสกุล</label>
+            <input type="text" id="patientName" required placeholder="กรุณากรอกชื่อ-นามสกุล">
+
+            <label>เบอร์โทรศัพท์ติดต่อ</label>
+            <input type="tel" id="phoneNumber" required pattern="[0-9]{10}" placeholder="08xxxxxxxx" maxlength="10">
             
             <label>เลือกบริการ</label>
             <select id="service" required>
                 <option value="">-- กรุณาเลือก --</option>
-                <option value="ตรวจโรคหัวใจ">ตรวจและปรึกษาโรคหัวใจ</option>
+                <option value="ตรวจโรคหัวใจ">ปรึกษาและตรวจเช็คโรคหัวใจ</option>
                 <option value="ตรวจคลื่นไฟฟ้าหัวใจ (ECG)">ตรวจคลื่นไฟฟ้าหัวใจ (ECG)</option>
                 <option value="ตรวจอัลตราซาวด์หัวใจ (Echo)">ตรวจอัลตราซาวด์หัวใจ (Echo)</option>
-                <option value="ประเมินก่อนผ่าตัด">ตรวจประเมินก่อนผ่าตัด</option>
+                <option value="ประเมินก่อนผ่าตัด">ประเมินก่อนผ่าตัด</option>
                 <option value="ตรวจโรคทั่วไป เบาหวาน ความดัน ไขมัน">ตรวจโรคทั่วไป เบาหวาน ความดัน ไขมัน</option>
                 <option value="วัคซีนผู้ใหญ่">วัคซีนผู้ใหญ่</option>
-                <option value="ออกใบรับรองแพทย์">ออกใบรับรองแพทย์</option>
                 <option value="ปรึกษาควบคุมน้ำหนัก">ปรึกษาควบคุมน้ำหนัก</option>
-                <option value="บริการพบแพทย์ออนไลน์ (สำหรับผู้ป่วยเก่าเท่านั้น)">พบแพทย์ออนไลน์ (เฉพาะผู้ป่วยเดิม)</option>
+                <option value="บริการพบแพทย์ออนไลน์ (สำหรับผู้ป่วยเก่าเท่านั้น)">บริการพบแพทย์ออนไลน์</option>
             </select>
 
             <label>วันที่ต้องการนัดหมาย</label>
@@ -168,5 +117,85 @@
             <button type="submit" id="submitBtn">ยืนยันการจอง</button>
         </form>
     </div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // 1. ใส่ Firebase Config ของคุณหมอตรงนี้ (ลบของเก่าในปีกกาออก แล้ววางของจริงลงไป)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOECJizIo7TtDn832EVBgDF4pnrAsq2v8",
+            authDomain: "cardioplus-booking.firebaseapp.com",
+            projectId: "cardioplus-booking",
+            storageBucket: "cardioplus-booking.firebasestorage.app",
+            messagingSenderId: "140447979267",
+            appId: "1:140447979267:web:cdd8feebd1d372f43abb36"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 2. ใส่ LIFF ID ตรงนี้
+        const myLiffId = "2009872099-vtv2PBor";
+
+        // ฟังก์ชันเริ่มต้นทำงานเมื่อโหลดหน้าเว็บ
+        async function main() {
+            try {
+                await liff.init({ liffId: myLiffId });
+                if (liff.isLoggedIn()) {
+                    // ดึงข้อมูลโปรไฟล์ LINE
+                    const profile = await liff.getProfile();
+                    
+                    // นำข้อมูลไปใส่ในฟอร์ม
+                    document.getElementById("lineUserId").value = profile.userId; // ซ่อน ID ไว้ส่งเข้าฐานข้อมูล
+                    document.getElementById("patientName").value = profile.displayName; // แสดงชื่อ LINE แต่พิมพ์แก้ได้
+                    
+                    // แสดงฟอร์มให้คนไข้เห็น
+                    document.getElementById("status").style.display = "none";
+                    document.getElementById("bookingForm").style.display = "block";
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                document.getElementById("status").innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ LINE";
+                console.error(err);
+            }
+        }
+
+        // จัดการเมื่อคนไข้กดปุ่ม "ยืนยันการจอง"
+        document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+            e.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรช
+            
+            const submitBtn = document.getElementById("submitBtn");
+            submitBtn.innerText = "กำลังบันทึกข้อมูล...";
+            submitBtn.disabled = true;
+
+            try {
+                // ส่งข้อมูลขึ้น Firebase Collection ชื่อ 'appointments'
+                await addDoc(collection(db, "appointments"), {
+                    userId: document.getElementById("lineUserId").value,
+                    patientName: document.getElementById("patientName").value,
+                    phoneNumber: document.getElementById("phoneNumber").value,
+                    service: document.getElementById("service").value,
+                    bookDate: document.getElementById("bookDate").value,
+                    bookTime: document.getElementById("bookTime").value,
+                    createdAt: serverTimestamp() // บันทึกเวลาที่กดจอง
+                });
+
+                alert("บันทึกการจองสำเร็จ! คลินิกจะติดต่อกลับเพื่อยืนยันอีกครั้ง");
+                liff.closeWindow(); // ปิดหน้าต่าง LIFF อัตโนมัติหลังจองเสร็จ
+
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
+                submitBtn.innerText = "ยืนยันการจอง";
+                submitBtn.disabled = false;
+            }
+        });
+
+        main();
+    </script>
 </body>
 </html>
