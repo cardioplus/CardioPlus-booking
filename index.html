@@ -14,6 +14,9 @@
             padding: 20px;
             display: flex;
             justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
         .container {
             background-color: #ffffff;
@@ -127,14 +130,12 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const myLiffId = "2009872099-vtv2PBor"; // แทนที่ด้วย LIFF ID ของคุณ
+        const myLiffId = "2009872099-vtv2PBor";
 
         const dateInput = document.getElementById("bookDate");
         const today = new Date().toISOString().split('T')[0];
-        // บังคับให้เลือกวันที่ย้อนหลังไม่ได้
         dateInput.setAttribute('min', today);
 
-        // 1. Initial LIFF & Firebase
         async function main() {
             try {
                 await liff.init({ liffId: myLiffId });
@@ -154,183 +155,9 @@
             }
         }
 
-        const maxQueue = 3; // กำหนดรับคิวละ 3 คน
+        const maxQueue = 3; 
         const timeSelect = document.getElementById("bookTime");
 
-        // 2. ฟังก์ชันแยกเวลาตามวัน (เสาร์-อาทิตย์ จะไม่มีช่วง 12.00 - 17.00 โผล่มาให้เลือก)
+        // ฟังก์ชันสร้างช่วงเวลา (แบบตัวเลขตรงๆ เพื่อป้องกันปัญหา Timezone ของเครื่องลูกค้า)
         function getAvailableTimeSlots(dateString) {
-            const date = new Date(dateString);
-            const day = date.getDay(); // 0 = อาทิตย์, 1-5 = จันทร์-ศุกร์, 6 = เสาร์
-            let slots = {};
-
-            const addSlots = (startHour, startMin, endHour, endMin) => {
-                let current = new Date(date);
-                current.setHours(startHour, startMin, 0, 0);
-                const end = new Date(date);
-                end.setHours(endHour, endMin, 0, 0);
-
-                while (current < end) {
-                    let h1 = String(current.getHours()).padStart(2, '0');
-                    let m1 = String(current.getMinutes()).padStart(2, '0');
-                    let time1 = `${h1}:${m1}`;
-                    
-                    current.setMinutes(current.getMinutes() + 30);
-                    
-                    let h2 = String(current.getHours()).padStart(2, '0');
-                    let m2 = String(current.getMinutes()).padStart(2, '0');
-                    let time2 = `${h2}:${m2}`;
-                    
-                    slots[time1] = `${time1} - ${time2}`;
-                }
-            };
-
-            if (day >= 1 && day <= 5) {
-                // จันทร์ - ศุกร์: 17.00 - 20.00
-                addSlots(17, 0, 20, 0);
-            } else {
-                // เสาร์ - อาทิตย์: 08.30 - 12.00 และ 17.00 - 20.00
-                addSlots(8, 30, 12, 0);
-                addSlots(17, 0, 20, 0);
-            }
-            return slots;
-        }
-
-        // 3. เมื่อลูกค้าเปลี่ยนวันที่ ให้โหลดเวลามาเช็ค
-        dateInput.addEventListener("change", async (e) => {
-            const selectedDate = e.target.value;
-            if(!selectedDate) return;
-
-            timeSelect.innerHTML = `<option value="">-- กำลังเช็คคิวว่าง... --</option>`;
-            timeSelect.disabled = true;
-
-            try {
-                // ก. ตรวจสอบก่อนว่า Admin ได้ตั้งให้เป็น "วันหยุด" หรือไม่
-                const qClosed = query(collection(db, "closedDates"), where("date", "==", selectedDate));
-                const closedSnapshot = await getDocs(qClosed);
-                
-                if (!closedSnapshot.empty) {
-                    timeSelect.innerHTML = `<option value="">-- คลินิกปิดทำการในวันที่เลือก --</option>`;
-                    return; 
-                }
-
-                // ข. ดึงตารางเวลาที่จะแสดง (อิงตามว่าเป็นวันธรรมดา หรือ เสาร์อาทิตย์)
-                const dynamicTimeSlots = getAvailableTimeSlots(selectedDate);
-                
-                // ค. ตรวจสอบยอดคิวในฐานข้อมูล
-                const q = query(collection(db, "appointments"), where("bookDate", "==", selectedDate));
-                const snapshot = await getDocs(q);
-
-                let counts = {};
-                Object.keys(dynamicTimeSlots).forEach(k => counts[k] = 0);
-                
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.status !== "ยกเลิก" && counts[data.bookTime] !== undefined) {
-                        counts[data.bookTime]++;
-                    }
-                });
-
-                timeSelect.innerHTML = `<option value="">-- กรุณาเลือกเวลา --</option>`;
-                
-                // ง. แสดงเวลาให้ลูกค้าเลือก (ตัดคิวเต็มออก)
-                Object.keys(dynamicTimeSlots).forEach(timeKey => {
-                    let bookedCount = counts[timeKey] || 0;
-                    let remain = maxQueue - bookedCount;
-                    let optionHTML = document.createElement("option");
-                    optionHTML.value = timeKey;
-
-                    if (remain <= 0) {
-                        optionHTML.disabled = true;
-                        optionHTML.text = `${dynamicTimeSlots[timeKey]} (เต็ม)`;
-                    } else {
-                        optionHTML.text = `${dynamicTimeSlots[timeKey]} (เหลือ ${remain} คิว)`;
-                    }
-                    timeSelect.appendChild(optionHTML);
-                });
-
-                timeSelect.disabled = false;
-
-            } catch (error) {
-                console.error("Error checking queue: ", error);
-                timeSelect.innerHTML = `<option value="">เกิดข้อผิดพลาด ลองเลือกวันที่ใหม่อีกครั้ง</option>`;
-            }
-        });
-
-        // 4. กดปุ่มยืนยันการจอง
-        document.getElementById("bookingForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById("submitBtn");
-            submitBtn.innerText = "กำลังตรวจสอบคิว...";
-            submitBtn.disabled = true;
-
-            const selectedDate = document.getElementById("bookDate").value;
-            const selectedTime = document.getElementById("bookTime").value;
-            const patientName = document.getElementById("patientName").value;
-            const serviceSelect = document.getElementById("service");
-            const serviceName = serviceSelect.options[serviceSelect.selectedIndex].text;
-            
-            const dynamicTimeSlots = getAvailableTimeSlots(selectedDate);
-
-            try {
-                // เช็คให้ชัวร์อีกครั้งว่าระหว่างกรอกฟอร์ม คิวยังไม่เต็ม
-                const checkQ = query(collection(db, "appointments"), 
-                    where("bookDate", "==", selectedDate),
-                    where("bookTime", "==", selectedTime)
-                );
-                const checkSnapshot = await getDocs(checkQ);
-                
-                let currentCount = 0;
-                checkSnapshot.forEach((doc) => {
-                    if (doc.data().status !== "ยกเลิก") {
-                        currentCount++;
-                    }
-                });
-
-                if (currentCount >= maxQueue) {
-                    alert(`ขออภัยค่ะ คิวในช่วงเวลา ${dynamicTimeSlots[selectedTime]} มีผู้จองเต็ม ${maxQueue} คิวแล้ว กรุณาเลือกช่วงเวลาอื่นค่ะ`);
-                    submitBtn.innerText = "ยืนยันการจอง";
-                    submitBtn.disabled = false;
-                    dateInput.dispatchEvent(new Event("change"));
-                    return; 
-                }
-
-                // ถ้าคิวว่าง สั่งบันทึกข้อมูล
-                submitBtn.innerText = "กำลังบันทึกข้อมูล...";
-
-                await addDoc(collection(db, "appointments"), {
-                    userId: document.getElementById("lineUserId").value || "no-id",
-                    patientName: patientName,
-                    phoneNumber: document.getElementById("phoneNumber").value,
-                    service: document.getElementById("service").value,
-                    bookDate: selectedDate,
-                    bookTime: selectedTime,
-                    status: "ยืนยันแล้ว", 
-                    createdAt: serverTimestamp() 
-                });
-
-                // ซ่อนฟอร์มและแสดงหน้า Success
-                document.getElementById("mainTitle").style.display = "none";
-                document.getElementById("bookingForm").style.display = "none";
-                
-                document.getElementById("succName").innerText = patientName;
-                document.getElementById("succService").innerText = serviceName;
-                
-                const [yyyy, mm, dd] = selectedDate.split('-');
-                document.getElementById("succDate").innerText = `${dd}/${mm}/${yyyy}`;
-                document.getElementById("succTime").innerText = dynamicTimeSlots[selectedTime];
-                
-                document.getElementById("successView").style.display = "block";
-
-            } catch (error) {
-                console.error("Error adding document: ", error);
-                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
-                submitBtn.innerText = "ยืนยันการจอง";
-                submitBtn.disabled = false;
-            }
-        });
-
-        main();
-    </script>
-</body>
-</html>
+            // แยก string ออกมาเพื่อสร้าง Date ให้แม่นยำ
